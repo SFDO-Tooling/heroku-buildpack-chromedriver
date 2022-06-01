@@ -28,9 +28,17 @@ mkdir -p $BIN_DIR
 if [ -f $ENV_DIR/CHROMEDRIVER_VERSION ]; then
   VERSION=$(cat $ENV_DIR/CHROMEDRIVER_VERSION)
 else
-  topic "Looking up latest chromedriver version"
-  LATEST="https://chromedriver.storage.googleapis.com/LATEST_RELEASE"
-  VERSION=`curl -s $LATEST`
+  if [ -f $ENV_DIR/GOOGLE_CHROME_BIN ]; then
+    CHROME_BIN=$(cat $ENV_DIR/GOOGLE_CHROME_BIN)
+    GOOGLE_CHROME_VERSION=$("${CHROME_BIN}" --product-version | sed 's/\(.*\)\.[0-9]*$/\1/')
+    topic "Looking up latest chromedriver version using version $GOOGLE_CHROME_VERSION"
+    LATEST="https://chromedriver.storage.googleapis.com/LATEST_RELEASE_$GOOGLE_CHROME_VERSION"
+    VERSION=$(curl -s $LATEST)
+  else
+    topic "Looking up latest chromedriver version"
+    LATEST="https://chromedriver.storage.googleapis.com/LATEST_RELEASE"
+    VERSION=`curl -s $LATEST`
+  fi
 fi
 indent "Version $VERSION"
 
@@ -41,6 +49,12 @@ curl -s -o $ZIP_LOCATION $ZIP_URL
 unzip -o $ZIP_LOCATION -d $BIN_DIR
 rm -f $ZIP_LOCATION
 indent "Downloaded"
+
+if [ -x "$GOOGLE_CHROME_SHIM" ]; then
+  topic "Validating chromedriver"
+  $BIN_DIR/chromedriver --version | indent
+  indent "Validated"
+else
 
 topic "Creating chromedriver export scripts"
 mkdir -p $BUILD_DIR/.profile.d
